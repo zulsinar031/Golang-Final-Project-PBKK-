@@ -56,7 +56,6 @@ func main() {
 	http.HandleFunc("/dashboard", dashboardHandler)
 	http.HandleFunc("/logout", logoutHandler)
 
-	// Serve static files (e.g., images, CSS)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	fmt.Println("Server running at http://localhost:8080")
@@ -139,7 +138,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 
 	renderTemplate(w, "dashboard.html", map[string]interface{}{
 		"UserID":    username,
-		"LogoutURL": "/logout", // or you can use a full URL if necessary
+		"LogoutURL": "/logout", 
 	})
 }
 
