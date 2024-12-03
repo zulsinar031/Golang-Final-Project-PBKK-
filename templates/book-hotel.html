@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Hotel</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: url('/static/images/img.jpg') no-repeat;
+            background-size: cover;
+            background-position: center;
+            color:#fff;
+        }
+
+        .wrapper {
+            width: 420px;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, .2);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+            color: #fff;
+            border-radius: 10px;
+            padding: 30px 40px;
+        }
+
+        .wrapper h1 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .wrapper .input-box {
+            position: relative;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .wrapper .input-box label {
+            font-size: 16px;
+            color: #fff;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .wrapper .input-box input,
+        .wrapper .input-box textarea,
+        .wrapper .input-box select {
+            width: 100%;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 16px;
+            color: #fff;
+            padding: 15px 20px;
+            outline: none;
+            appearance: none; /* Remove default arrow in some browsers */
+            -webkit-appearance: none; /* Safari */
+            -moz-appearance: none; /* Firefox */
+        }
+
+        .input-box select {
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23fff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 20px center;
+            background-size: 24px 24px;
+            padding-right: 50px; /* Adjust to avoid overlap with the arrow */
+        }
+
+        .input-box input[type="text"]::placeholder {
+            color: #fff;  /* Set text color to white */
+        }
+
+        .input-box textarea::placeholder {
+            color: #ffffff;
+        }
+
+        .input-box option {
+            color: #333; /* Dark text for options */
+            background-color: #fff; /* White background for options */
+        }
+
+        .wrapper .btn {
+            width: 100%;
+            height: 45px;
+            background: #fff;
+            border: none;
+            border-radius: 40px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, .1);
+            cursor: pointer;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .wrapper .btn:hover {
+            background-color: #ddd;
+        }
+
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f44336;
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            width: auto;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .alert.success {
+            background-color: #4CAF50;
+        }
+
+        .alert.warning {
+            background-color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <h1>Book a Hotel</h1>
+        <div id="alertBox" class="alert"></div>
+        <form method="POST" action="/book-hotel" onsubmit="return validateForm()">
+            <div class="input-box">
+                <label for="arrivaldate">Arrival Date</label>
+                <input type="date" id="arrivaldate" name="arrivaldate" required>
+            </div>
+            <div class="input-box">
+                <label for="departuredate">Departure Date</label>
+                <input type="date" id="departuredate" name="departuredate" required>
+            </div>
+            <div class="input-box">
+                <select id="hotelname" name="hotelname" required>
+                    <option value="">Select a Hotel</option>
+                    {{range .Hotels}}
+                        <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="input-box">
+                <input type="text" id="username" name="username" placeholder="Username" required>
+            </div>
+            <div class="input-box">
+                <textarea id="comment" name="comment" placeholder="Additional Comments" rows="4"></textarea>
+            </div>
+            <button type="submit" class="btn">Submit Booking</button>
+        </form>
+    </div>
+    <script>
+        // Function to show alert messages
+        function showAlert(message) {
+            var alertBox = document.getElementById("alertBox");
+            alertBox.innerText = message; // Set the message
+            alertBox.style.display = "block"; // Show the alert
+
+            // Hide the alert after 5 seconds
+            setTimeout(function() {
+                alertBox.style.display = "none";
+            }, 5000);
+        }
+
+        // Check if there is an error message to display on page load
+        window.onload = function() {
+            var errorMessage = "{{.ErrorMessage | js}}"; // Safe escape for JavaScript
+            if (errorMessage) {
+                showAlert(errorMessage);
+            }
+        };
+    </script>
+    </script>
+</body>
+</html>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-
-<html>
-    <head>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"rel="stylesheet">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NOTBooking.com</title>
     <style>
         * {
             margin: 0;
@@ -12,104 +12,167 @@
             font-family: "Poppins", sans-serif;
         }
         body {
-            display : flex;
+            display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: url('/static/images/img.jpg') no-repeat;
+            margin: 0;
+            background: url('/static/images/img.jpg') no-repeat center center/cover;
             background-size: cover;
-            background-position: center;
+        }
+        .center-container {  /* New class for outer div */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;  /* Ensure it stretches to full width */
+            text-align: center;  /* Center text if needed */
+        }
+        .site-name {
+            font-size: 100px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 30px; /* Space between the site name and the login card */
         }
         .wrapper {
-            width : 420px;
+            width: 420px;
             background: transparent;
             border: 2px solid rgba(255,255,255, .2);
             backdrop-filter: blur(20px);
             box-shadow: 0 0 10px rgba(0,0,0,.2);
-            color : #fff;
+            color: #fff;
             border-radius: 10px;
-            padding:30px 40px;
+            padding: 30px 40px;
+            margin-top:30px;
         }
-        .wrapper h1{
+        .wrapper h1 {
             font-size: 36px;
             text-align: center;
         }
-        .wrapper .input-box{
+        .wrapper .input-box {
             position: relative;
-            width : 100%;
-            height : 50px;
-            margin : 30px 0;
+            width: 100%;
+            height: 50px;
+            margin: 30px 0;
         }
-        .wrapper .btn{
-            width : 100%;
-            height : 45px;
+        .wrapper .btn {
+            width: 100%;
+            height: 45px;
             background: #fff;
             border: none;
             outline: none;
             border-radius: 40px;
             box-shadow: 0 0 10px rgba(0,0,0,.1);
             cursor: pointer;
-            font-size:16px;
-            color:#333;
-            font-weight:600;
-            margin-bottom: 20 0 15px;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 20px;
         }
-        .wrapper .reg-link{
+        .wrapper .reg-link {
             font-size: 14.5px;
             text-align: center;
             margin-top: 20px;
             margin-bottom: 5px;
         }
-        .reg-link p a{
-            color : #fff;
+        .reg-link p a {
+            color: #fff;
             text-decoration: none;
             font-weight: 600;
         }
-
-        .input-box input{
-            width : 100%;
-            height : 100%;
+        .input-box input {
+            width: 100%;
+            height: 100%;
             background: transparent;
-            border:none;
-            outline : none;
-            border : 2px solid rgba(255,255,255, .2);
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255,255,255, .2);
             border-radius: 40px;
             font-size: 16px;
-            color : #fff;
+            color: #fff;
             padding: 20px 45px 20px 20px;
         }
-        .input-box input::placeholder{
-            color : #fff;
-
+        .input-box input::placeholder {
+            color: #fff;
         }
         .input-box i {
-            position : absolute;
-            right : 20px;
-            top:50%;
+            position: absolute;
+            right: 20px;
+            top: 50%;
             transform: translateY(-50%);
-            font-size:20px;
+            font-size: 20px;
+        }
+
+        /* Custom alert styles */
+        .alert {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f44336;
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            width: auto;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .alert.success {
+            background-color: #4CAF50;
+        }
+
+        .alert.warning {
+            background-color: #ff9800;
         }
     </style>    
-    </head>
-    <body>
-        <div>
-            <div class="wrapper">
-                <h1>Login</h1>
-                <form method="POST" action="/login">
-                    <div class="input-box">
-                        <input type="text" name="username" placeholder="Username" required>
-                        <i class='bx bxs-user' ></i>
-                    </div>
-                    <div class="input-box">
-                        <input type="password" name="password" placeholder="Password" required>
-                        <i class='bx bxs-lock-alt' ></i>
-                    </div>
-                    <div class="reg-link">
-                        <p>Don't have an account? <a href="/register">Register</a></p>
-                    </div>
-                    <button type="submit" class="btn">Login</button>
-                </form>
-            </div>
+</head>
+<body>
+    <div class="center-container">
+        <div class="site-name">NOTBooking.com</div> <!-- Website name -->
+        <div class="wrapper">
+            <div id="alertBox" class="alert"></div>
+            <h1>Login</h1>
+            <form method="POST" action="/login">
+                <div class="input-box">
+                    <input type="text" name="username" placeholder="Username" required>
+                    <i class='bx bxs-user'></i>
+                </div>
+                <div class="input-box">
+                    <input type="password" name="password" placeholder="Password" required>
+                    <i class='bx bxs-lock-alt'></i>
+                </div>
+                <div class="reg-link">
+                    <p>Don't have an account? <a href="/register">Register</a></p>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
         </div>
-    </body>
+    </div>
+    <script>
+        // Function to show alert messages
+        function showAlert(message) {
+            var alertBox = document.getElementById("alertBox");
+            alertBox.innerText = message; // Set the message
+            alertBox.style.display = "block"; // Show the alert
+
+            // Hide the alert after 5 seconds
+            setTimeout(function() {
+                alertBox.style.display = "none";
+            }, 5000);
+        }
+
+        // Check if there is an error message to display on page load
+        window.onload = function() {
+            var errorMessage = "{{.ErrorMessage | js}}"; // Safe escape for JavaScript
+            if (errorMessage) {
+                showAlert(errorMessage);
+            }
+        };
+    </script>
+</body>
 </html>

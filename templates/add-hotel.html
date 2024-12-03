@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+    
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: url('/static/images/img.jpg') no-repeat;
+            background-size: cover;
+            background-position: center;
+        }
+    
+        .wrapper {
+            width: 420px;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, .2);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+            color: #fff;
+            border-radius: 10px;
+            padding: 30px 40px;
+        }
+    
+        .wrapper h1 {
+            font-size: 36px;
+            text-align: center;
+        }
+    
+        .wrapper .input-box {
+            position: relative;
+            width: 100%;
+            margin: 30px 0;
+        }
+    
+        .wrapper .btn {
+            width: 100%;
+            height: 45px;
+            background: #fff;
+            border: none;
+            outline: none;
+            border-radius: 40px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, .1);
+            cursor: pointer;
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+    
+        .wrapper .reg-link {
+            font-size: 14.5px;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+    
+        .reg-link p a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    
+        /* Style for input fields */
+        .input-box input {
+            width: 100%;
+            height: 50px;
+            background: transparent;
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 45px 20px 20px;
+        }
+    
+        .input-box input::placeholder {
+            color: #fff;
+        }
+    
+        .input-box i {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+        }
+    
+        /* Style for textarea (description box) */
+        .input-box textarea {
+            width: 100%;
+            height: 120px; /* Adjusted height for multi-line input */
+            background: transparent;
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 45px 20px 20px;
+            resize: vertical; /* Allow resizing vertically */
+            margin-bottom: 15px;
+        }
+        .input-box label {
+            width: 10px;
+            height: 50px;
+            background: transparent;
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 45px 20px 20px;
+        }
+    
+        .input-box textarea::placeholder {
+            color: #fff;
+        }
+        
+        .wrapper .stars {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 300px;
+            margin-top:30px;
+            margin-left:20px;
+        }
+
+        .wrapper .stars .star {
+            font-size: 30px;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .wrapper .stars .star.selected,
+        .wrapper .stars .star:hover {
+            color: gold;
+        }
+
+        .wrapper .stars .star:hover,
+        .wrapper .stars .star.selected {
+            color: gold;
+        }
+    </style>
+    </head>
+    <body>
+        <div>
+            <div class="wrapper">
+                <h1>Add an hotel</h1>
+                <form method="POST" action="/add-hotel">
+                    <div class="input-box">
+                        <input type="text" name="name" placeholder="Name" required>
+                        <i class='bx bxs-user' ></i>
+                    </div>
+                    <div class="input-box">
+                        <input type="text" name="address" placeholder="Address" required>
+                        <i class='bx bx-map'></i>
+                    </div>
+                    <div class="input-box">
+                        <input type="email" name="email" placeholder="Email" required>
+                        <i class='bx bxs-envelope' ></i>
+                    </div>
+                    <div class="input-box">
+                        <input type="number" name="price" placeholder="Price" required>
+                        <i class='bx bx-money'></i>
+                    </div>
+                    <div class="input-box">
+                        <textarea name="description" placeholder="Description" required rows="6" style="width: 100%;"></textarea>
+                        <i class='bx bx-text'></i>
+                    </div>
+                    <div class="input-box">
+                        <label for="rating">Rating</label>
+                        <div class="stars" id="rating">
+                            <span class="star" data-value="1">&#9733;</span>
+                            <span class="star" data-value="2">&#9733;</span>
+                            <span class="star" data-value="3">&#9733;</span>
+                            <span class="star" data-value="4">&#9733;</span>
+                            <span class="star" data-value="5">&#9733;</span>
+                        </div>
+                        <input type="hidden" name="rating" id="rating-value" value="0">
+                    </div>
+                    <button type="submit" class="btn">Submit</button>
+                </form>
+            </div>
+        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const stars = document.querySelectorAll('.star');
+                const ratingValue = document.getElementById('rating-value');
+                
+                stars.forEach((star) => {
+                    star.addEventListener('click', () => {
+                        const value = star.getAttribute('data-value');
+                        ratingValue.value = value;
+    
+                        // Reset all stars
+                        stars.forEach((s) => s.classList.remove('selected'));
+    
+                        // Highlight the selected stars
+                        for (let i = 0; i < value; i++) {
+                            stars[i].classList.add('selected');
+                        }
+                    });
+    
+                    // Optional: Add hover effect for better UX
+                    star.addEventListener('mouseover', () => {
+                        const value = star.getAttribute('data-value');
+                        stars.forEach((s, index) => {
+                            s.classList.toggle('hovered', index < value);
+                        });
+                    });
+    
+                    star.addEventListener('mouseout', () => {
+                        stars.forEach((s) => s.classList.remove('hovered'));
+                    });
+                });
+            });
+        </script>
+    
+        <style>
+            /* Add this hover effect styling */
+            .star {
+                font-size: 30px;
+                color: lightgray;
+                cursor: pointer;
+                transition: color 0.3s;
+            }
+            .star.selected {
+                color: gold;
+            }
+            .star.hovered {
+                color: gold;
+            }
+        </style>
+    </body>
+</html>

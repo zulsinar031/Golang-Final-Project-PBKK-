@@ -1,0 +1,223 @@
+<!DOCTYPE html>  
+<html lang="en">
+<head>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: url('/static/images/img.jpg') no-repeat;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .wrapper {
+            width: 500px; /* Make the wrapper wider for longer search bar */
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, .2);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+            color: #fff;
+            border-radius: 10px;
+            padding: 30px 40px;
+        }
+
+        .wrapper h1 {
+            font-size: 36px;
+            text-align: center;
+        }
+
+        .wrapper h2 {
+            font-size: 28px;
+        }
+
+        .wrapper p {
+            font-size: 16px;
+        }
+
+        .wrapper .input-box {
+            position: relative;
+            display: flex; /* Flexbox for alignment */
+            width: 100%;
+            margin: 30px 0;
+        }
+
+        .input-box input {
+            width: calc(100% - 50px); /* Take full width minus button width */
+            height: 50px;
+            background: transparent;
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px 40px 40px 40px; /* Rounded left corners */
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 20px;
+        }
+
+        .input-box input::placeholder {
+            color: #fff;
+        }
+
+        .search-btn {
+            width: 50px;
+            height: 50px;
+            background: transparent;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: #fff;
+            padding: 10px;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.2);
+            margin-left:10px;
+        }
+
+        .search-btn:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Style for textarea (description box) */
+        .input-box textarea {
+            width: 100%;
+            height: 120px; /* Adjusted height for multi-line input */
+            background: transparent;
+            border: none;
+            outline: none;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 45px 20px 20px;
+            resize: vertical; /* Allow resizing vertically */
+            margin-bottom: 15px;
+        }
+
+        .wrapper .stars {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 300px;
+            margin-top: 10px;
+            margin-left: 40px;
+        }
+
+        .wrapper .stars .star {
+            font-size: 30px;
+            color: #ddd;
+            transition: color 0.3s;
+        }
+
+        .wrapper .stars .star.selected {
+            color: gold;
+        }
+
+        .hotel-info {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            color: #fff;
+            padding: 20px 20px;
+            border-radius: 40px 40px 40px 40px;
+        }
+
+        .hotel-info p {
+            margin-top:20px;
+            margin-bottom: 10px; /* Space between each paragraph */
+            font-weight: 200;
+        }
+
+        .hotel-info strong {
+            color: #ffffff; /* Strong text color for labels */
+            margin-bottom:10px;
+            font-weight: 600; /* Make labels bold */
+        }
+
+        .hotel-info p:last-child {
+            margin-bottom: 0; /* No margin at the bottom of the last paragraph */
+        }
+
+        /* Optional: Add a hover effect to the hotel info card */
+        .hotel-info:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); /* Darker shadow on hover */
+            transform: translateY(-2px); /* Slight upward movement */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition */
+        }
+
+        /* Style for the back button */
+        .back-btn {
+            display: block;
+            width: 200px;
+            height: 50px;
+            margin: 30px auto;
+            background: #fff;
+            border: 2px solid rgba(255, 255, 255, .2);
+            border-radius: 40px;
+            font-size: 18px;
+            color: #000000;
+            text-align: center;
+            line-height: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="wrapper">
+            <h1>Search for an Hotel</h1>
+            <form method="GET" action="/search-hotel">
+                <div class="input-box">
+                    <input type="text" name="query" placeholder="Enter hotel name" required>
+                    <button class="search-btn" type="submit"><i class="bx bx-search"></i></button>
+                </div>
+            </form>
+
+            {{if .ErrorMessage}}
+                <p class="error">{{.ErrorMessage}}</p>
+            {{end}}
+
+            {{if .Hotel}}
+                <div class="hotel-info">
+                    <h2>{{.Hotel.Name}}</h2>
+                    <p><strong>Address :</strong> <br>{{.Hotel.Address}}</p>
+                    <p><strong>Email :</strong> <br>{{.Hotel.Email}}</p>
+                    <p><strong>Price per night :</strong> <br>${{.Hotel.Price}}</p>
+                    <p><strong>Description :</strong> <br>{{.Hotel.Description}}</p>
+                    <p><strong>Rating :</strong>
+                        <div class="stars">
+                            <span class="star {{if ge .Hotel.Rating 1}}selected{{end}}" data-value="1">&#9733;</span>
+                            <span class="star {{if ge .Hotel.Rating 2}}selected{{end}}" data-value="2">&#9733;</span>
+                            <span class="star {{if ge .Hotel.Rating 3}}selected{{end}}" data-value="3">&#9733;</span>
+                            <span class="star {{if ge .Hotel.Rating 4}}selected{{end}}" data-value="4">&#9733;</span>
+                            <span class="star {{if ge .Hotel.Rating 5}}selected{{end}}" data-value="5">&#9733;</span>
+                        </div>
+                    </p>
+                </div>
+            {{else}}
+                <p></p>
+            {{end}}
+
+            <a href="/dashboard" class="back-btn">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>
