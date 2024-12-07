@@ -97,6 +97,22 @@
             text-decoration: underline;
             text-decoration: bold;
         }
+
+        .modify-btn {
+            background-color: transparent;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            padding: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .modify-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            text-decoration: bold;
+        }
         /* Custom alert styles */
         .alert {
             display: none;
@@ -171,9 +187,8 @@
                             <td>{{.Departuredate.Format "02/01/2006"}}</td>
                             <td>{{.Comment}}</td>
                             <td>
-                                <a href="/delete-booking?id={{.ID}}" class="delete-btn">
-                                    <i class="bx bx-trash"></i>
-                                </a>
+                                <a href="/modify-booking?id={{.ID}}" class="modify-btn" style="margin-right:5px"><i class="bx bx-edit"></i></a>
+                                <a href="/delete-booking?id={{.ID}}" class="delete-btn"><i class="bx bx-trash"></i></a>
                             </td>
                         </tr>
                         {{end}}

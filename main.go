@@ -47,7 +47,7 @@ type Booking struct {
 func init() {
 	var err error
 	// Initialize the SQLite database with the name users.db
-	db, err = sql.Open("sqlite3", "C:/Users/leque/Golang-Final-Project-PBKK-/users.db")
+	db, err = sql.Open("sqlite3", "./users.db")
 	if err != nil {
 		log.Fatalf("Error opening database: %v\n", err)
 	}
@@ -113,7 +113,9 @@ func main() {
 	http.HandleFunc("/add-hotel", addHotelHandler)
 	http.HandleFunc("/book-hotel", bookHotelHandler)
 	http.HandleFunc("/delete-booking/", deleteBookingHandler) // Use a dynamic URL for booking ID
-	http.HandleFunc("/search-hotel", searchHotelHandler)
+	http.HandleFunc("/search-hotel", searchHotelHandler)      //modifyBookingHandler
+	http.HandleFunc("/modify-booking", modifyBookingHandler)
+	http.HandleFunc("/update-booking", updateBookingHandler)
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -232,12 +234,8 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		bookings = append(bookings, booking)
 	}
 
-	successMessage := ""
-
-	// Check if success parameter is in the URL
-	if r.URL.Query().Get("success") == "true" {
-		successMessage = "Booking deleted successfully!"
-	}
+	// Check for any success message in the URL
+	successMessage := r.URL.Query().Get("success")
 
 	// Render the dashboard template, passing the success message and bookings data
 	renderTemplate(w, "dashboard.html", map[string]interface{}{
@@ -408,7 +406,7 @@ func bookHotelHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Redirect to the dashboard or a confirmation page
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		http.Redirect(w, r, "/dashboard?success=Booking+added+successfully+!", http.StatusSeeOther)
 	}
 }
 
@@ -450,7 +448,7 @@ func deleteBookingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set a success message and redirect to the dashboard
-	http.Redirect(w, r, "/dashboard?success=true", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard?success=Booking%20deleted%20successfully!", http.StatusSeeOther)
 }
 
 // Search hotel handler
@@ -481,4 +479,167 @@ func searchHotelHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "search-hotel.html", map[string]interface{}{
 		"Hotel": hotel,
 	})
+}
+
+// Modify booking handler - Display the form
+func modifyBookingHandler(w http.ResponseWriter, r *http.Request) {
+	// Retrieve the booking ID from the query parameter
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "Booking ID is missing", http.StatusBadRequest)
+		return
+	}
+
+	// Get all hotels from the hotels table
+	rows, err := db.Query("SELECT name FROM hotels")
+	if err != nil {
+		http.Error(w, "Error fetching hotels", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var hotels []string
+	for rows.Next() {
+		var hotelName string
+		if err := rows.Scan(&hotelName); err != nil {
+			http.Error(w, "Error scanning hotel name", http.StatusInternalServerError)
+			return
+		}
+		hotels = append(hotels, hotelName)
+	}
+
+	// Fetch the booking details from the database
+	var booking Booking
+	query := "SELECT id, arrivaldate, departuredate, hotelname, username, comment FROM bookings WHERE id = ?"
+	err = db.QueryRow(query, id).Scan(
+		&booking.ID,
+		&booking.Arrivaldate,
+		&booking.Departuredate,
+		&booking.Hotelname,
+		&booking.Username,
+		&booking.Comment,
+	)
+	if err != nil {
+		http.Error(w, "Error fetching booking details", http.StatusInternalServerError)
+		return
+	}
+
+	// Get error message from URL query parameters
+	errorMessage := r.URL.Query().Get("error")
+
+	// Input date format (dd/mm/yyyy)
+	outputLayout := "2006-01-02" // HTML date format (yyyy-MM-dd)
+	//layout := "02/01/2006"
+
+	// Render the form with the hotel options
+	renderTemplate(w, "modify-booking.html", map[string]interface{}{
+		"ErrorMessage":         errorMessage, // Display error if any
+		"Hotels":               hotels,       // Pass the hotels to the template
+		"BookingID":            booking.ID,   // Pass the booking ID
+		"BookingArrivaldate":   booking.Arrivaldate.Format(outputLayout),
+		"BookingDeparturedate": booking.Departuredate.Format(outputLayout),
+		"BookingHotelname":     booking.Hotelname,
+		"BookingUsername":      booking.Username,
+		"Comment":              booking.Comment, // Pass the comment
+	})
+}
+
+// Update booking handler - Process the update
+func updateBookingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse form data
+	id := r.FormValue("id")
+	arrivalDateStr := r.FormValue("arrivaldate")
+	departureDateStr := r.FormValue("departuredate")
+	hotelName := r.FormValue("hotelname")
+	username := r.FormValue("username")
+	comment := r.FormValue("comment")
+
+	outputLayout := "2006-01-02" // HTML date format (yyyy-MM-dd)
+
+	// Validate input
+	arrivalDate, err := time.Parse(outputLayout, arrivalDateStr)
+	if err != nil {
+		http.Error(w, "Invalid arrival date format", http.StatusBadRequest)
+		return
+	}
+	departureDate, err := time.Parse(outputLayout, departureDateStr)
+	if err != nil {
+		http.Error(w, "Invalid departure date format", http.StatusBadRequest)
+		return
+	}
+
+	// Verify that the departure date is after the arrival date
+	if departureDate.Before(arrivalDate) {
+		// Re-render the form with the error message and include the booking id in the URL
+		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Departure+date+must+be+after+the+arrival+date", http.StatusSeeOther)
+		return
+	}
+
+	// Verify that the username exists in the users table
+	var userExists bool
+	err = db.QueryRow("SELECT COUNT(1) FROM users WHERE username = ?", username).Scan(&userExists)
+	if err != nil {
+		http.Error(w, "Error checking username", http.StatusInternalServerError)
+		return
+	}
+	if !userExists {
+		// Re-render the form with the error message and include the booking id in the URL
+		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Username+does+not+exist", http.StatusSeeOther)
+		return
+	}
+
+	// Verify that the hotel exists in the hotels table
+	var hotelExists bool
+	err = db.QueryRow("SELECT COUNT(1) FROM hotels WHERE name = ?", hotelName).Scan(&hotelExists)
+	if err != nil {
+		http.Error(w, "Error checking hotel", http.StatusInternalServerError)
+		return
+	}
+	if !hotelExists {
+		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Hotel+does+not+exist", http.StatusSeeOther)
+		return
+	}
+
+	// Check if the hotel is available for the selected dates, excluding the current booking
+	var overlapExists bool
+	query := `
+		SELECT COUNT(1) 
+		FROM bookings 
+		WHERE hotelname = ? 
+		AND id != ?  -- Exclude the booking being modified
+		AND (
+			(arrivaldate BETWEEN ? AND ?) OR 
+			(departuredate BETWEEN ? AND ?)
+		)
+	`
+	err = db.QueryRow(query, hotelName, id, arrivalDateStr, departureDateStr, arrivalDateStr, departureDateStr).Scan(&overlapExists)
+	if err != nil {
+		http.Error(w, "Error checking booking availability", http.StatusInternalServerError)
+		return
+	}
+
+	if overlapExists {
+		http.Redirect(w, r, "/modify-booking?id="+id+"&error=This+hotel+is+already+booked+for+the+selected+dates", http.StatusSeeOther)
+		return
+	}
+
+	// Update the booking in the database
+	query = `
+		UPDATE bookings
+		SET arrivaldate = ?, departuredate = ?, hotelname = ?, username = ?, comment = ?
+		WHERE id = ?
+	`
+	_, err = db.Exec(query, arrivalDateStr, departureDateStr, hotelName, username, comment, id)
+	if err != nil {
+		http.Error(w, "Error updating booking", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to the dashboard
+	http.Redirect(w, r, "/dashboard?success=Booking+updated+successfully+!", http.StatusSeeOther)
 }

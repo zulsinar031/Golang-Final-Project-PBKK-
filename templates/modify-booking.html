@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book a Hotel</title>
+    <title>Change of plan ? Modify your booking !</title>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -137,35 +137,36 @@
             background-color: #ff9800;
         }
     </style>
-</head>
+</head> <!-- Hidden Booking ID -->
 <body>
     <div class="wrapper">
-        <h1>Book a Hotel</h1>
+        <h1>Change of plan? Modify your booking !</h1>
         <div id="alertBox" class="alert"></div>
-        <form method="POST" action="/book-hotel" onsubmit="return validateForm()">
+        <form method="POST" action="/update-booking" onsubmit="return validateForm()">
+            <input type="hidden" name="id" value="{{.BookingID}}"> <!-- Hidden ID field -->
             <div class="input-box">
-                <label for="arrivaldate">Arrival Date</label>
-                <input type="date" id="arrivaldate" name="arrivaldate" required>
+                <label for="arrivaldate">Arrival Date </label>
+                <input type="date" id="arrivaldate" name="arrivaldate" value="{{.BookingArrivaldate}}" required>
             </div>
             <div class="input-box">
                 <label for="departuredate">Departure Date</label>
-                <input type="date" id="departuredate" name="departuredate" required>
+                <input type="date" id="departuredate" name="departuredate" value="{{.BookingDeparturedate}}" required>
             </div>
             <div class="input-box">
                 <select id="hotelname" name="hotelname" required>
                     <option value="">Select a Hotel</option>
                     {{range .Hotels}}
-                        <option value="{{.}}">{{.}}</option>
+                        <option value="{{.}}" {{if eq . $.BookingHotelname}}selected{{end}}>{{.}}</option>
                     {{end}}
                 </select>
             </div>
             <div class="input-box">
-                <input type="text" id="username" name="username" placeholder="Username" required>
+                <input type="text" id="username" name="username" value="{{.BookingUsername}}" required>
             </div>
             <div class="input-box">
-                <textarea id="comment" name="comment" placeholder="Additional Comments" rows="4"></textarea>
+                <textarea id="comment" name="comment" placeholder="Additional Comments" rows="4">{{.Comment}}</textarea>
             </div>
-            <button type="submit" class="btn">Submit Booking</button>
+            <button type="submit" class="btn">Update Booking</button>
         </form>
     </div>
     <script>
