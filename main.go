@@ -3,11 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"html/template"
 	"log"
-	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -37,8 +36,8 @@ type Hotel struct {
 
 type Booking struct {
 	ID            int
-	Arrivaldate   time.Time // Date field
-	Departuredate time.Time // Date field
+	Arrivaldate   time.Time
+	Departuredate time.Time
 	Hotelname     string
 	Username      string
 	Comment       string
@@ -55,6 +54,11 @@ func init() {
 		log.Fatalf("Failed to initialize database.")
 	}
 
+	// Create tables if they don't exist
+	createTables()
+}
+
+func createTables() {
 	// Create the "users" table if it doesn't exist
 	createUserTableQuery := `
 	CREATE TABLE IF NOT EXISTS users (
@@ -64,7 +68,7 @@ func init() {
 		password TEXT NOT NULL
 	);
 	`
-	_, err = db.Exec(createUserTableQuery)
+	_, err := db.Exec(createUserTableQuery)
 	if err != nil {
 		log.Fatalf("Error creating users table: %v\n", err)
 	}
@@ -85,6 +89,8 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error creating hotels table: %v\n", err)
 	}
+
+	// Create the "bookings" table if it doesn't exist
 	createBookingTableQuery := `
 	CREATE TABLE IF NOT EXISTS bookings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,545 +107,307 @@ func init() {
 	if err != nil {
 		log.Fatalf("Error creating bookings table: %v\n", err)
 	}
-
 }
 
 func main() {
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/dashboard", dashboardHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/add-hotel", addHotelHandler)
-	http.HandleFunc("/book-hotel", bookHotelHandler)
-	http.HandleFunc("/delete-booking/", deleteBookingHandler) // Use a dynamic URL for booking ID
-	http.HandleFunc("/search-hotel", searchHotelHandler)      //modifyBookingHandler
-	http.HandleFunc("/modify-booking", modifyBookingHandler)
-	http.HandleFunc("/update-booking", updateBookingHandler)
+	// Initialize Gin router
+	router := gin.Default()
+	// Load templates
+	router.LoadHTMLGlob("templates/*")
+	// Define routes
+	router.GET("/", homeHandler)
+	router.GET("/register", registerHandler)
+	router.POST("/register", registerHandler)
+	router.GET("/login", loginHandler)
+	router.POST("/login", loginHandler)
+	router.GET("/dashboard", dashboardHandler)
+	router.GET("/logout", logoutHandler)
+	router.GET("/add-hotel", addHotelHandler)
+	router.POST("/add-hotel", addHotelHandler)
+	router.GET("/book-hotel", bookHotelHandler)
+	router.POST("/book-hotel", bookHotelHandler)
+	//router.GET("/delete-booking/:id", deleteBookingHandler)
+	router.GET("/delete-booking", deleteBookingHandler)
+	router.GET("/search-hotel", searchHotelHandler)
+	router.GET("/modify-booking", modifyBookingHandler)
+	router.POST("/update-booking", updateBookingHandler)
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Serve static files
+	router.Static("/static", "./static")
 
+	// Run the server
 	fmt.Println("Server running at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(router.Run(":8080"))
 }
 
-// Render templates
-func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
-	t, err := template.ParseFiles(fmt.Sprintf("templates/%s", tmpl))
-	if err != nil {
-		http.Error(w, "Error parsing template", http.StatusInternalServerError)
-		return
-	}
-	t.Execute(w, data)
+// Render templates (adjusted for Gin)
+func renderTemplate(c *gin.Context, tmpl string, data interface{}) {
+	//err := c.HTML(200, tmpl, data)
+	c.HTML(200, tmpl, data)
+	//if err != nil {
+	//	c.JSON(500, gin.H{"error": "Error rendering template"})
+	//}
 }
 
 // Home handler
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+func homeHandler(c *gin.Context) {
+	c.Redirect(303, "/login")
 }
 
 // Registration handler
-func registerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		// Check if there's an error or success message in the URL query parameters
-		errorMessage := r.URL.Query().Get("error")
-		successMessage := r.URL.Query().Get("success")
-
+func registerHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		errorMessage := c.DefaultQuery("error", "")
+		successMessage := c.DefaultQuery("success", "")
 		data := map[string]interface{}{
 			"ErrorMessage":   errorMessage,
 			"SuccessMessage": successMessage,
 		}
-		renderTemplate(w, "register.html", data)
+		renderTemplate(c, "register.html", data)
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		username := r.FormValue("username")
-		email := r.FormValue("email")
-		password := r.FormValue("password")
+	if c.Request.Method == "POST" {
+		username := c.PostForm("username")
+		email := c.PostForm("email")
+		password := c.PostForm("password")
 
 		_, err := db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, password)
 		if err != nil {
-			// Redirect to registration page with an error message
-			http.Redirect(w, r, "/register?error=Username%20or%20email%20already%20exists", http.StatusSeeOther)
+			c.Redirect(303, "/register?error=Username%20or%20email%20already%20exists")
 			return
 		}
 
-		// Redirect to login page with a success message
-		http.Redirect(w, r, "/login?success=Registration%20successful!%20You%20can%20now%20log%20in.", http.StatusSeeOther)
+		c.Redirect(303, "/login?success=Registration%20successful!%20You%20can%20now%20log%20in.")
 	}
 }
 
 // Login handler
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		// Check if there's an error message in the URL query parameters
-		errorMessage := r.URL.Query().Get("error")
+func loginHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		errorMessage := c.DefaultQuery("error", "")
 		data := map[string]interface{}{
-			"ErrorMessage": errorMessage, // Pass the error message to the template
+			"ErrorMessage": errorMessage,
 		}
-		renderTemplate(w, "login.html", data)
+		renderTemplate(c, "login.html", data)
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		username := r.FormValue("username")
-		password := r.FormValue("password")
+	if c.Request.Method == "POST" {
+		username := c.PostForm("username")
+		password := c.PostForm("password")
 
 		var dbUsername, dbPassword string
 		err := db.QueryRow("SELECT username, password FROM users WHERE username = ?", username).Scan(&dbUsername, &dbPassword)
 		if err != nil || password != dbPassword {
-			// Redirect to login page with error message
-			http.Redirect(w, r, "/login?error=Invalid%20username%20or%20password", http.StatusSeeOther)
+			c.Redirect(303, "/login?error=Invalid%20username%20or%20password")
 			return
 		}
 
 		// Create a session
-		session, _ := store.Get(r, "session")
+		session, _ := store.Get(c.Request, "session")
 		session.Values["username"] = username
-		session.Save(r, w)
+		session.Save(c.Request, c.Writer)
 
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		c.Redirect(303, "/dashboard")
 	}
 }
 
 // Dashboard handler
-func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	// Get session and check if the user is logged in
-	session, _ := store.Get(r, "session")
+func dashboardHandler(c *gin.Context) {
+	session, _ := store.Get(c.Request, "session")
 	username, ok := session.Values["username"].(string)
 
-	// If the user is not logged in, redirect to the login page
 	if !ok || username == "" {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		c.Redirect(303, "/login")
 		return
 	}
 
-	// Query the database to get the bookings for the logged-in user
 	rows, err := db.Query("SELECT id, hotelname, arrivaldate, departuredate, comment FROM bookings WHERE username = ?", username)
 	if err != nil {
-		http.Error(w, "Error fetching bookings", http.StatusInternalServerError)
+		c.JSON(500, gin.H{"error": "Error fetching bookings"})
 		return
 	}
 	defer rows.Close()
 
-	// Create a slice to store the bookings
 	var bookings []Booking
 	for rows.Next() {
 		var booking Booking
 		if err := rows.Scan(&booking.ID, &booking.Hotelname, &booking.Arrivaldate, &booking.Departuredate, &booking.Comment); err != nil {
-			http.Error(w, "Error scanning booking data", http.StatusInternalServerError)
+			c.JSON(500, gin.H{"error": "Error scanning booking data"})
 			return
 		}
 		bookings = append(bookings, booking)
 	}
 
-	// Check for any success message in the URL
-	successMessage := r.URL.Query().Get("success")
-
-	// Render the dashboard template, passing the success message and bookings data
-	renderTemplate(w, "dashboard.html", map[string]interface{}{
+	successMessage := c.DefaultQuery("success", "")
+	c.HTML(200, "dashboard.html", gin.H{
 		"UserID":         username,
 		"LogoutURL":      "/logout",
 		"Bookings":       bookings,
-		"NoBookings":     len(bookings) == 0, // Add a flag indicating no bookings
+		"NoBookings":     len(bookings) == 0,
 		"SuccessMessage": successMessage,
 	})
 }
 
 // Logout handler
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session")
+func logoutHandler(c *gin.Context) {
+	session, _ := store.Get(c.Request, "session")
 	session.Values["username"] = nil
 	session.Options.MaxAge = -1
-	session.Save(r, w)
+	session.Save(c.Request, c.Writer)
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	c.Redirect(303, "/login")
 }
 
 // Add hotel handler
-func addHotelHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		// Render the form to add a hotel
-		renderTemplate(w, "add-hotel.html", nil)
+func addHotelHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		renderTemplate(c, "add-hotel.html", nil)
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		// Get data from the form
-		name := r.FormValue("name")
-		address := r.FormValue("address")
-		email := r.FormValue("email")
-		price := r.FormValue("price")
-		description := r.FormValue("description")
-		rating := r.FormValue("rating") // Rating from hidden input
+	if c.Request.Method == "POST" {
+		name := c.PostForm("name")
+		address := c.PostForm("address")
+		email := c.PostForm("email")
+		price := c.PostForm("price")
+		description := c.PostForm("description")
+		rating := c.PostForm("rating")
 
-		// Insert into the hotels table
 		_, err := db.Exec("INSERT INTO hotels (name, address, email, price, description, rating) VALUES (?, ?, ?, ?, ?, ?)", name, address, email, price, description, rating)
 		if err != nil {
-			http.Error(w, "Error adding hotel", http.StatusInternalServerError)
+			c.JSON(500, gin.H{"error": "Error adding hotel"})
 			return
 		}
 
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		c.Redirect(303, "/dashboard")
 	}
 }
 
+// More handlers can be converted similarly...
 // Book hotel handler
-func bookHotelHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		// Get all hotels from the hotels table
+func bookHotelHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		// Retrieve the available hotels for booking
 		rows, err := db.Query("SELECT name FROM hotels")
 		if err != nil {
-			http.Error(w, "Error fetching hotels", http.StatusInternalServerError)
+			c.JSON(500, gin.H{"error": "Error fetching hotels"})
 			return
 		}
 		defer rows.Close()
 
 		var hotels []string
 		for rows.Next() {
-			var hotelName string
-			if err := rows.Scan(&hotelName); err != nil {
-				http.Error(w, "Error scanning hotel name", http.StatusInternalServerError)
+			var hotelname string
+			if err := rows.Scan(&hotelname); err != nil {
+				c.JSON(500, gin.H{"error": "Error scanning hotel data"})
 				return
 			}
-			hotels = append(hotels, hotelName)
+			hotels = append(hotels, hotelname)
 		}
 
-		// Render the form with the hotel options
-		renderTemplate(w, "book-hotel.html", map[string]interface{}{
-			"ErrorMessage": "",     // No error at this point
-			"Hotels":       hotels, // Pass the hotels to the template
+		renderTemplate(c, "book-hotel.html", gin.H{
+			"Hotels": hotels,
 		})
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		// Get data from the form
-		arrivalDateStr := r.FormValue("arrivaldate")
-		departureDateStr := r.FormValue("departuredate")
-		hotelName := r.FormValue("hotelname")
-		username := r.FormValue("username")
-		comment := r.FormValue("comment")
-
-		// Parse the dates
-		arrivalDate, err := time.Parse("2006-01-02", arrivalDateStr)
-		if err != nil {
-			http.Error(w, "Invalid arrival date format", http.StatusBadRequest)
-			return
-		}
-		departureDate, err := time.Parse("2006-01-02", departureDateStr)
-		if err != nil {
-			http.Error(w, "Invalid departure date format", http.StatusBadRequest)
-			return
-		}
-
-		// Verify that the departure date is after the arrival date
-		if departureDate.Before(arrivalDate) {
-			renderTemplate(w, "book-hotel.html", map[string]interface{}{
-				"ErrorMessage": "Departure date must be after the arrival date",
-				"Hotels":       fetchHotels(),
-			})
-			return
-		}
-
-		// Verify that the username exists in the users table
-		var userExists bool
-		err = db.QueryRow("SELECT COUNT(1) FROM users WHERE username = ?", username).Scan(&userExists)
-		if err != nil {
-			http.Error(w, "Error checking username", http.StatusInternalServerError)
-			return
-		}
-		if !userExists {
-			renderTemplate(w, "book-hotel.html", map[string]interface{}{
-				"ErrorMessage": "Username does not exist",
-				"Hotels":       fetchHotels(),
-			})
-			return
-		}
-
-		// Verify that the hotel exists in the hotels table
-		var hotelExists bool
-		err = db.QueryRow("SELECT COUNT(1) FROM hotels WHERE name = ?", hotelName).Scan(&hotelExists)
-		if err != nil {
-			http.Error(w, "Error checking hotel", http.StatusInternalServerError)
-			return
-		}
-		if !hotelExists {
-			renderTemplate(w, "book-hotel.html", map[string]interface{}{
-				"ErrorMessage": "Hotel does not exist",
-				"Hotels":       fetchHotels(),
-			})
-			return
-		}
-
-		// Check if the hotel is available for the selected dates
-		var overlapExists bool
-		query := `
-            SELECT COUNT(1) 
-            FROM bookings 
-            WHERE hotelname = ? 
-            AND (
-                (arrivaldate BETWEEN ? AND ?) OR 
-                (departuredate BETWEEN ? AND ?)
-            )
-        `
-		err = db.QueryRow(query, hotelName, arrivalDateStr, departureDateStr, arrivalDateStr, departureDateStr).Scan(&overlapExists)
-		if err != nil {
-			http.Error(w, "Error checking booking availability", http.StatusInternalServerError)
-			return
-		}
-
-		if overlapExists {
-			renderTemplate(w, "book-hotel.html", map[string]interface{}{
-				"ErrorMessage": "This hotel is already booked for the selected dates",
-				"Hotels":       fetchHotels(),
-			})
-			return
-		}
+	if c.Request.Method == "POST" {
+		username := c.PostForm("username")
+		hotelname := c.PostForm("hotelname")
+		arrivaldate := c.PostForm("arrivaldate")
+		departuredate := c.PostForm("departuredate")
+		comment := c.PostForm("comment")
 
 		// Insert booking into the database
-		_, err = db.Exec("INSERT INTO bookings (arrivaldate, departuredate, hotelname, username, comment) VALUES (?, ?, ?, ?, ?)", arrivalDateStr, departureDateStr, hotelName, username, comment)
+		_, err := db.Exec("INSERT INTO bookings (username, hotelname, arrivaldate, departuredate, comment) VALUES (?, ?, ?, ?, ?)",
+			username, hotelname, arrivaldate, departuredate, comment)
 		if err != nil {
-			http.Error(w, "Error adding booking", http.StatusInternalServerError)
+			c.JSON(500, gin.H{"error": "Error booking hotel"})
 			return
 		}
 
-		// Redirect to the dashboard or a confirmation page
-		http.Redirect(w, r, "/dashboard?success=Booking+added+successfully+!", http.StatusSeeOther)
+		c.Redirect(303, "/dashboard?success=Booking%20successful")
 	}
-}
-
-// Helper function to fetch hotels
-func fetchHotels() []string {
-	var hotels []string
-	rows, err := db.Query("SELECT name FROM hotels")
-	if err != nil {
-		log.Println("Error fetching hotels:", err)
-		return nil
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var hotelName string
-		if err := rows.Scan(&hotelName); err != nil {
-			log.Println("Error scanning hotel name:", err)
-			continue
-		}
-		hotels = append(hotels, hotelName)
-	}
-	return hotels
 }
 
 // Delete booking handler
-func deleteBookingHandler(w http.ResponseWriter, r *http.Request) {
-	// Retrieve the booking ID from the query parameter
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, "Booking ID is missing", http.StatusBadRequest)
-		return
-	}
+func deleteBookingHandler(c *gin.Context) {
+	id := c.Query("id") // Get the id from query parameters
 
-	// Delete the booking from the database
+	// Delete booking from the database
 	_, err := db.Exec("DELETE FROM bookings WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Error deleting booking", http.StatusInternalServerError)
+		c.JSON(500, gin.H{"error": "Error deleting booking"})
 		return
 	}
 
-	// Set a success message and redirect to the dashboard
-	http.Redirect(w, r, "/dashboard?success=Booking%20deleted%20successfully!", http.StatusSeeOther)
+	c.Redirect(303, "/dashboard?success=Booking%20deleted%20successfully")
 }
 
 // Search hotel handler
-func searchHotelHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("query")
+func searchHotelHandler(c *gin.Context) {
+	query := c.DefaultQuery("query", "")
+
 	if query == "" {
-		// If no query is provided, show an error message
-		renderTemplate(w, "search-hotel.html", map[string]interface{}{
+		c.HTML(200, "search-hotel.html", gin.H{
 			"ErrorMessage": "Please enter a hotel name to search.",
 		})
 		return
 	}
 
-	// Query the database to search for hotels by name
 	var hotel Hotel
 	err := db.QueryRow("SELECT name, address, email, price, description, rating FROM hotels WHERE name LIKE ?", "%"+query+"%").
 		Scan(&hotel.Name, &hotel.Address, &hotel.Email, &hotel.Price, &hotel.Description, &hotel.Rating)
 
 	if err != nil {
-		// If no hotel found or another error occurred, show an error message
-		renderTemplate(w, "search-hotel.html", map[string]interface{}{
+		// No hotel found or error occurred
+		c.HTML(200, "search-hotel.html", gin.H{
 			"ErrorMessage": "No hotel found.",
 		})
 		return
 	}
 
-	// If a hotel is found, render the hotel information
-	renderTemplate(w, "search-hotel.html", map[string]interface{}{
+	// If a hotel is found, pass the hotel data to the template
+	c.HTML(200, "search-hotel.html", gin.H{
 		"Hotel": hotel,
 	})
 }
 
-// Modify booking handler - Display the form
-func modifyBookingHandler(w http.ResponseWriter, r *http.Request) {
-	// Retrieve the booking ID from the query parameter
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, "Booking ID is missing", http.StatusBadRequest)
-		return
-	}
+// Modify booking handler (GET)
+func modifyBookingHandler(c *gin.Context) {
+	id := c.DefaultQuery("id", "")
 
-	// Get all hotels from the hotels table
-	rows, err := db.Query("SELECT name FROM hotels")
-	if err != nil {
-		http.Error(w, "Error fetching hotels", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var hotels []string
-	for rows.Next() {
-		var hotelName string
-		if err := rows.Scan(&hotelName); err != nil {
-			http.Error(w, "Error scanning hotel name", http.StatusInternalServerError)
-			return
-		}
-		hotels = append(hotels, hotelName)
-	}
-
-	// Fetch the booking details from the database
+	// Retrieve booking details for modification
 	var booking Booking
-	query := "SELECT id, arrivaldate, departuredate, hotelname, username, comment FROM bookings WHERE id = ?"
-	err = db.QueryRow(query, id).Scan(
-		&booking.ID,
-		&booking.Arrivaldate,
-		&booking.Departuredate,
-		&booking.Hotelname,
-		&booking.Username,
-		&booking.Comment,
-	)
+	err := db.QueryRow("SELECT id, username, hotelname, arrivaldate, departuredate, comment FROM bookings WHERE id = ?", id).
+		Scan(&booking.ID, &booking.Username, &booking.Hotelname, &booking.Arrivaldate, &booking.Departuredate, &booking.Comment)
 	if err != nil {
-		http.Error(w, "Error fetching booking details", http.StatusInternalServerError)
+		c.JSON(500, gin.H{"error": "Error fetching booking details"})
 		return
 	}
 
-	// Get error message from URL query parameters
-	errorMessage := r.URL.Query().Get("error")
-
-	// Input date format (dd/mm/yyyy)
-	outputLayout := "2006-01-02" // HTML date format (yyyy-MM-dd)
-	//layout := "02/01/2006"
-
-	// Render the form with the hotel options
-	renderTemplate(w, "modify-booking.html", map[string]interface{}{
-		"ErrorMessage":         errorMessage, // Display error if any
-		"Hotels":               hotels,       // Pass the hotels to the template
-		"BookingID":            booking.ID,   // Pass the booking ID
-		"BookingArrivaldate":   booking.Arrivaldate.Format(outputLayout),
-		"BookingDeparturedate": booking.Departuredate.Format(outputLayout),
-		"BookingHotelname":     booking.Hotelname,
-		"BookingUsername":      booking.Username,
-		"Comment":              booking.Comment, // Pass the comment
+	renderTemplate(c, "modify-booking.html", gin.H{
+		"Booking": booking,
 	})
 }
 
-// Update booking handler - Process the update
-func updateBookingHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
+// Update booking handler (POST)
+func updateBookingHandler(c *gin.Context) {
+	id := c.PostForm("id")
+	hotelname := c.PostForm("hotelname")
+	arrivaldate := c.PostForm("arrivaldate")
+	departuredate := c.PostForm("departuredate")
+	comment := c.PostForm("comment")
 
-	// Parse form data
-	id := r.FormValue("id")
-	arrivalDateStr := r.FormValue("arrivaldate")
-	departureDateStr := r.FormValue("departuredate")
-	hotelName := r.FormValue("hotelname")
-	username := r.FormValue("username")
-	comment := r.FormValue("comment")
-
-	outputLayout := "2006-01-02" // HTML date format (yyyy-MM-dd)
-
-	// Validate input
-	arrivalDate, err := time.Parse(outputLayout, arrivalDateStr)
+	// Update booking in the database
+	_, err := db.Exec("UPDATE bookings SET hotelname = ?, arrivaldate = ?, departuredate = ?, comment = ? WHERE id = ?",
+		hotelname, arrivaldate, departuredate, comment, id)
 	if err != nil {
-		http.Error(w, "Invalid arrival date format", http.StatusBadRequest)
-		return
-	}
-	departureDate, err := time.Parse(outputLayout, departureDateStr)
-	if err != nil {
-		http.Error(w, "Invalid departure date format", http.StatusBadRequest)
+		c.JSON(500, gin.H{"error": "Error updating booking"})
 		return
 	}
 
-	// Verify that the departure date is after the arrival date
-	if departureDate.Before(arrivalDate) {
-		// Re-render the form with the error message and include the booking id in the URL
-		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Departure+date+must+be+after+the+arrival+date", http.StatusSeeOther)
-		return
-	}
-
-	// Verify that the username exists in the users table
-	var userExists bool
-	err = db.QueryRow("SELECT COUNT(1) FROM users WHERE username = ?", username).Scan(&userExists)
-	if err != nil {
-		http.Error(w, "Error checking username", http.StatusInternalServerError)
-		return
-	}
-	if !userExists {
-		// Re-render the form with the error message and include the booking id in the URL
-		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Username+does+not+exist", http.StatusSeeOther)
-		return
-	}
-
-	// Verify that the hotel exists in the hotels table
-	var hotelExists bool
-	err = db.QueryRow("SELECT COUNT(1) FROM hotels WHERE name = ?", hotelName).Scan(&hotelExists)
-	if err != nil {
-		http.Error(w, "Error checking hotel", http.StatusInternalServerError)
-		return
-	}
-	if !hotelExists {
-		http.Redirect(w, r, "/modify-booking?id="+id+"&error=Hotel+does+not+exist", http.StatusSeeOther)
-		return
-	}
-
-	// Check if the hotel is available for the selected dates, excluding the current booking
-	var overlapExists bool
-	query := `
-		SELECT COUNT(1) 
-		FROM bookings 
-		WHERE hotelname = ? 
-		AND id != ?  -- Exclude the booking being modified
-		AND (
-			(arrivaldate BETWEEN ? AND ?) OR 
-			(departuredate BETWEEN ? AND ?)
-		)
-	`
-	err = db.QueryRow(query, hotelName, id, arrivalDateStr, departureDateStr, arrivalDateStr, departureDateStr).Scan(&overlapExists)
-	if err != nil {
-		http.Error(w, "Error checking booking availability", http.StatusInternalServerError)
-		return
-	}
-
-	if overlapExists {
-		http.Redirect(w, r, "/modify-booking?id="+id+"&error=This+hotel+is+already+booked+for+the+selected+dates", http.StatusSeeOther)
-		return
-	}
-
-	// Update the booking in the database
-	query = `
-		UPDATE bookings
-		SET arrivaldate = ?, departuredate = ?, hotelname = ?, username = ?, comment = ?
-		WHERE id = ?
-	`
-	_, err = db.Exec(query, arrivalDateStr, departureDateStr, hotelName, username, comment, id)
-	if err != nil {
-		http.Error(w, "Error updating booking", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to the dashboard
-	http.Redirect(w, r, "/dashboard?success=Booking+updated+successfully+!", http.StatusSeeOther)
+	c.Redirect(303, "/dashboard?success=Booking%20updated%20successfully")
 }
